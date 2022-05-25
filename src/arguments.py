@@ -1,14 +1,8 @@
 import numpy as onp
-import jax
-import jax.numpy as np
 import argparse
 import sys
 import numpy as onp
 import matplotlib.pyplot as plt
-from jax.config import config
-import torch
-
-torch.manual_seed(0)
 
 # Set numpy printing format
 onp.random.seed(0)
@@ -49,5 +43,3 @@ plt.rcParams.update({
     "text.usetex": True,
     "font.family": "sans-serif",
     "font.sans-serif": ["Helvetica"]})
-
-

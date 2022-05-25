@@ -1,11 +1,5 @@
-import jax.numpy as np
-import jax
-import numpy as onp
-import orix
-import meshio
-import pickle
+import numpy as np
 import time
-import os
 import matplotlib.pyplot as plt
 
 

@@ -1,3 +1,6 @@
+'''
+Example copied from https://comet-fenics.readthedocs.io/en/latest/demo/2D_plasticity/vonMises_plasticity.py.html
+'''
 import ufl
 from dolfin import *
 import numpy as np
@@ -29,7 +32,6 @@ We = VectorElement("Quadrature", mesh.ufl_cell(), degree=deg_stress, dim=4, quad
 W = FunctionSpace(mesh, We)
 W0e = FiniteElement("Quadrature", mesh.ufl_cell(), degree=deg_stress, quad_scheme='default')
 W0 = FunctionSpace(mesh, W0e)
-
 
 
 sig = Function(W)
@@ -77,11 +79,7 @@ def custom_sigma(eps_el):
     return lmbda*(eps_el[i, i])*Identity(3) + 2*mu*eps_el
 
 
-
 ppos = lambda x: (x+abs(x))/2.
-# ppos = lambda x: ufl.conditional(ufl.gt(x, 0.), x, 0.)
-# ppos = lambda x: ufl.conditional(ufl.gt(x, 0.), x, x)
-
 
 def proj_sig(deps, old_sig, old_p):
     sig_n = as_3D_tensor(old_sig)
