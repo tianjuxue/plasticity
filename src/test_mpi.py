@@ -162,7 +162,7 @@ middle_time = time.time()
 print(f"Time elapsed {middle_time - start_time}")
 
  
-with io.XDMFFile(msh.comm, "out_poisson/poisson.xdmf", "w") as file:
+with io.XDMFFile(msh.comm, "data/out_poisson/poisson.xdmf", "w") as file:
     file.write_mesh(msh)
     file.write_function(uh)
  

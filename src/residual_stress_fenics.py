@@ -92,6 +92,7 @@ def simulation():
     sig_old = fe.Function(W)
     n_elas = fe.Function(W)
     beta = fe.Function(W0)
+    # name = "a b" is bad (having a space)!
     p = fe.Function(W0, name="Cumulative plastic strain")
     u = fe.Function(U, name="Total displacement")
     du = fe.Function(U, name="Iteration correction")
@@ -152,7 +153,7 @@ def simulation():
 
     # TODO
     a_Newton = fe.inner(eps(v), sigma_tang(eps(u_)))*dxm
-    res = -fe.inner(eps(u_), as_3D_tensor(sig))*dxm + 1e-10*fe.dot(normal, u_)*ds(2)
+    res = -fe.inner(as_3D_tensor(sig), eps(u_))*dxm + 1e-10*fe.dot(normal, u_)*ds(2)
 
     def local_project(v, V, u=None):
         dv = fe.TrialFunction(V)
@@ -168,6 +169,16 @@ def simulation():
         else:
             solver.solve_local_rhs(u)
 
+    def global_project(v, V, u=None):
+        '''
+        Not working.
+        AssertionError: Mismatch of quadrature points!
+        '''
+        if u is None:
+            return fe.project(v, V)
+        else:
+            u.assign(fe.project(v, V))
+
 
     P0 = fe.FunctionSpace(mesh, "DG", 0)
     p_avg = fe.Function(P0, name="Plastic strain")
@@ -181,7 +192,7 @@ def simulation():
     v = fe.TestFunction(V)
 
     # If theta = 0., we recover implicit Eulear; if theta = 1., we recover explicit Euler; theta = 0.5 seems to be a good choice.
-    theta = 1.
+    theta = 0.5
     T_rhs = theta*T_pre + (1 - theta)*T_crt
     T_bcs = [fe.DirichletBC(V, fe.Constant(ambient_T), bottom)]
 
@@ -249,6 +260,7 @@ def simulation():
             dT = fe.Function(V)
             dT.vector()[:] = T_crt_array - T_old_array
 
+
             Nitermax, tol = 200, 1e-8  # parameters of the Newton-Raphson procedure
             Nincr = 20
             A, Res = fe.assemble_system(a_Newton, res, u_bcs)
@@ -262,14 +274,24 @@ def simulation():
             # while nRes/nRes0 > tol and niter < Nitermax:
             # while niter < Nitermax:
             while nRes > tol:
+                print("\n")
                 fe.solve(A, du.vector(), Res, "mumps")
                 Du.assign(Du+du)
                 deps = eps(Du)
-     
+
+                print(f"du norm = {np.linalg.norm(np.array(du.vector()))}")
+ 
                 sig_, n_elas_, beta_, dp_ = proj_sig(deps, dT, sig_old, p)
+
                 local_project(sig_, W, sig)
                 local_project(n_elas_, W, n_elas)
                 local_project(beta_, W0, beta)
+
+                print(f"sig dof = {np.array(sig.vector()).shape}")
+                print(f"sig norm = {np.linalg.norm(np.array(sig.vector()))}")
+                print(f"n_elas norm = {np.linalg.norm(np.array(n_elas.vector()))}")
+                print(f"beta norm = {np.linalg.norm(np.array(beta.vector()))}")
+                
                 A, Res = fe.assemble_system(a_Newton, res, u_bcs)
                 nRes = Res.norm("l2")
                 print(f"Residual: {nRes}")
