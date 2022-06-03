@@ -25,6 +25,10 @@ parser.add_argument('--T_melt', type=float, help='Unit: K', default=1700.)
 parser.add_argument('--T_ambient', type=float, help='Unit: K', default=300.)
 parser.add_argument('--rho', type=float, help='Unit: kg/mm^3', default=8.08e-6)
 parser.add_argument('--c_p', type=float, help='Unit: J/(kg*K)', default=770.)
+
+parser.add_argument('--alpha_V', type=float, help='Unit: 1/K', default=1e-5)
+parser.add_argument('--Young_mod', type=float, help='Unit: MPa', default=70e3)
+
 # parser.add_argument('--laser_vel', type=float, help='Unit: mm/s', default=500.)
 parser.add_argument('--power', type=float, help='Unit: W', default=60.)
 parser.add_argument('--power_fraction', type=float, help='Unit: None', default=0.4)

@@ -90,7 +90,7 @@ start_time = time.time()
 
 # +
 msh = mesh.create_rectangle(comm=MPI.COMM_WORLD,
-                            points=((0.0, 0.0), (2.0, 1.0)), n=(1000, 500),
+                            points=((0.0, 0.0), (2.0, 1.0)), n=(500, 500),
                             cell_type=mesh.CellType.triangle,)
 V = fem.FunctionSpace(msh, ("Lagrange", 1))
 # -
@@ -162,10 +162,15 @@ middle_time = time.time()
 print(f"Time elapsed {middle_time - start_time}")
 
  
-with io.XDMFFile(msh.comm, "data/out_poisson/poisson.xdmf", "w") as file:
-    file.write_mesh(msh)
-    file.write_function(uh)
+# with io.XDMFFile(msh.comm, "data/out_poisson/poisson.xdmf", "w") as file:
+#     file.write_mesh(msh)
+#     file.write_function(uh)
  
+
+file = io.XDMFFile(msh.comm, "data/out_poisson/poisson.xdmf", "w")  
+file.write_mesh(msh)
+file.write_function(uh, 0) 
+file.write_function(uh, 1) 
 
 end_time = time.time()
 print(f"Time elapsed {end_time - start_time}")
