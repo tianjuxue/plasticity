@@ -7,6 +7,7 @@ from petsc4py import PETSc
 import glob
 import os
 import sys
+import basix
 from pprint import pprint
 from src.arguments import args
 from src.utils import walltime
@@ -90,6 +91,7 @@ def simulation():
     ds = ufl.Measure('ds', domain=mesh, subdomain_data=facet_tag, metadata=metadata)
     dxm = ufl.Measure('dx', domain=mesh, metadata=metadata)
     normal = ufl.FacetNormal(mesh)
+    quadrature_points, wts = basix.make_quadrature(basix.CellType.hexahedron, deg_stress)
 
 
     P0_ele = ufl.FiniteElement("DG", mesh.ufl_cell(), 0)
@@ -111,7 +113,8 @@ def simulation():
     # W0_ele = ufl.FiniteElement("DG", mesh.ufl_cell(), 0)
     # W0 = fem.FunctionSpace(mesh, W0_ele)
 
-    W_ele = ufl.TensorElement("Quadrature", mesh.ufl_cell(), degree=deg_stress, quad_scheme='default', symmetry=True)
+    # W_ele = ufl.TensorElement("Quadrature", mesh.ufl_cell(), degree=deg_stress, quad_scheme='default', symmetry=True)
+    W_ele = ufl.TensorElement("Quadrature", mesh.ufl_cell(), degree=deg_stress, quad_scheme='default')
     W = fem.FunctionSpace(mesh, W_ele)
     W0_ele = ufl.FiniteElement("Quadrature", mesh.ufl_cell(), degree=deg_stress, quad_scheme='default') 
     W0 = fem.FunctionSpace(mesh, W0_ele)
@@ -219,6 +222,7 @@ def simulation():
 
     new_sig, n_elas, beta, dp = proj_sig()
 
+    # ufl diff might be used to automate the computation of tangent stiffness tensor
     res_u_lhs = ufl.inner(eps(v), sigma_tang(eps(u_)))*dxm
     res_u_rhs = -ufl.inner(new_sig, eps(u_))*dxm  
 
@@ -234,6 +238,24 @@ def simulation():
         b_proj = ufl.inner(v, v_)*dxm
         problem = fem.petsc.LinearProblem(a_proj, b_proj, petsc_options={"ksp_type": "preonly", "pc_type": "lu"})
         u = problem.solve()
+        return u
+
+
+    def local_projection(v, V):
+        '''
+        See https://github.com/FEniCS/dolfinx/issues/2243
+        '''
+        u = fem.Function(V)
+        e_expr = fem.Expression(v, quadrature_points)
+        map_c = mesh.topology.index_map(mesh.topology.dim)
+        num_cells = map_c.size_local + map_c.num_ghosts
+        cells = np.arange(0, num_cells, dtype=np.int32)
+        e_eval = e_expr.eval(cells)
+
+        with u.vector.localForm() as u_local:
+            u_local.setBlockSize(u.function_space.dofmap.bs)
+            u_local.setValuesBlocked(V.dofmap.list.array, e_eval, addv=PETSc.InsertMode.INSERT)
+
         return u
 
 
@@ -253,6 +275,7 @@ def simulation():
         E.x.array[phase.x.array == 2] = args.Young_mod 
 
         alpha_V.x.array[(phase.x.array == 0) | (phase.x.array == 1)] = 0. 
+ 
         alpha_V.x.array[phase.x.array == 2] = args.alpha_V
   
     def write_sol(file, step):
@@ -317,19 +340,21 @@ def simulation():
 
             u.x.array[:] = u.x.array + Du.x.array
 
-            sig.x.array[:] = l2_projection(new_sig, W).x.array
+            sig.x.array[:] = local_projection(new_sig, W).x.array
             mpi_print(f"sig dof = {sig.x.array.shape}")
             mpi_print(f"sig norm = {np.linalg.norm(sig.x.array)}")
 
-            cumulative_p.x.array[:] = cumulative_p.x.array + l2_projection(dp, W0).x.array
+            cumulative_p.x.array[:] = cumulative_p.x.array + local_projection(dp, W0).x.array
 
+            # Remark: Can we do interpolation here?
+            # p_avg.interpolate(fem.Expression(cumulative_p, P0.element.interpolation_points))
             p_avg.x.array[:] = l2_projection(cumulative_p, P0).x.array
             strain_xx.x.array[:] = l2_projection(ufl.grad(u)[0, 0], P0).x.array
             stress_xx.x.array[:] = l2_projection(sig[0, 0], P0).x.array
             phase_avg.x.array[:] = l2_projection(phase, P0).x.array
 
             T_old.x.array[:] = T_crt.x.array
- 
+
             write_sol(vtk_file, i + 1)
             write_sol(xdmf_file, i + 1)
 
