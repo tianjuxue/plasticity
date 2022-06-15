@@ -241,7 +241,7 @@ def simulation():
         return u
 
 
-    def local_projection(v, V):
+    def quad_interpolation(v, V):
         '''
         See https://github.com/FEniCS/dolfinx/issues/2243
         '''
@@ -340,11 +340,11 @@ def simulation():
 
             u.x.array[:] = u.x.array + Du.x.array
 
-            sig.x.array[:] = local_projection(new_sig, W).x.array
+            sig.x.array[:] = quad_interpolation(new_sig, W).x.array
             mpi_print(f"sig dof = {sig.x.array.shape}")
             mpi_print(f"sig norm = {np.linalg.norm(sig.x.array)}")
 
-            cumulative_p.x.array[:] = cumulative_p.x.array + local_projection(dp, W0).x.array
+            cumulative_p.x.array[:] = cumulative_p.x.array + quad_interpolation(dp, W0).x.array
 
             # Remark: Can we do interpolation here?
             # p_avg.interpolate(fem.Expression(cumulative_p, P0.element.interpolation_points))
