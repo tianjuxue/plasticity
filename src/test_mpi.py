@@ -78,7 +78,6 @@ from ufl import ds, dx, grad, inner
 from mpi4py import MPI
 from petsc4py.PETSc import ScalarType
 
-start_time = time.time()
 
 # -
 
@@ -89,9 +88,9 @@ start_time = time.time()
 # $V$ on the mesh.
 
 # +
-msh = mesh.create_rectangle(comm=MPI.COMM_WORLD,
-                            points=((0.0, 0.0), (2.0, 1.0)), n=(500, 500),
-                            cell_type=mesh.CellType.triangle,)
+msh = mesh.create_box(comm=MPI.COMM_WORLD,
+                      points=((0., 0., 0.), (1., 1., 1.)), n=(50, 50, 50),
+                      cell_type=mesh.CellType.hexahedron)
 V = fem.FunctionSpace(msh, ("Lagrange", 1))
 # -
 
@@ -109,7 +108,7 @@ V = fem.FunctionSpace(msh, ("Lagrange", 1))
 
 facets = mesh.locate_entities_boundary(msh, dim=1,
                                        marker=lambda x: np.logical_or(np.isclose(x[0], 0.0),
-                                                                      np.isclose(x[0], 2.0)))
+                                                                      np.isclose(x[0], 1.0)))
 
 # We now find the degrees-of-freedom that are associated with the
 # boundary facets using {py:func}`locate_dofs_topological
@@ -121,7 +120,7 @@ dofs = fem.locate_dofs_topological(V=V, entity_dim=1, entities=facets)
 # {py:class}`DirichletBCMetaClass <dolfinx.fem.DirichletBCMetaClass>`
 # class that represents the boundary condition
 
-bc = fem.dirichletbc(value=ScalarType(0), dofs=dofs, V=V)
+bc = fem.dirichletbc(value=ScalarType(0.), dofs=dofs, V=V)
 
 # Next, we express the variational problem using UFL.
 
@@ -129,10 +128,9 @@ bc = fem.dirichletbc(value=ScalarType(0), dofs=dofs, V=V)
 u = ufl.TrialFunction(V)
 v = ufl.TestFunction(V)
 x = ufl.SpatialCoordinate(msh)
-f = 10 * ufl.exp(-((x[0] - 0.5) ** 2 + (x[1] - 0.5) ** 2) / 0.02)
-g = ufl.sin(5 * x[0])
+f = 10.
 a = inner(grad(u), grad(v)) * dx
-L = inner(f, v) * dx + inner(g, v) * ds
+L = inner(f, v) * dx
 # -
 
 # We create a {py:class}`LinearProblem <dolfinx.fem.LinearProblem>`
@@ -147,12 +145,15 @@ print("break1")
 # problem = fem.petsc.LinearProblem(a, L, bcs=[bc])
 # problem = fem.petsc.LinearProblem(a, L, bcs=[bc], petsc_options={"ksp_type": "preonly", "pc_type": "lu"})
 
+
+
 # problem = fem.petsc.LinearProblem(a, L, bcs=[bc], petsc_options={"ksp_type": "preonly"})
-problem = fem.petsc.LinearProblem(a, L, bcs=[bc], petsc_options={"ksp_type": "cg"})
-
-
+problem = fem.petsc.LinearProblem(a, L, bcs=[bc], petsc_options={"ksp_type": "bicg", "pc_type": "none"})
 
 print("break2")
+
+start_time = time.time()
+
 
 uh = problem.solve()
 
@@ -161,16 +162,12 @@ print("break3")
 middle_time = time.time()
 print(f"Time elapsed {middle_time - start_time}")
 
- 
-# with io.XDMFFile(msh.comm, "data/out_poisson/poisson.xdmf", "w") as file:
-#     file.write_mesh(msh)
-#     file.write_function(uh)
- 
+print(f"max of sol = {np.max(uh.x.array)}")
 
+ 
 file = io.XDMFFile(msh.comm, "data/out_poisson/poisson.xdmf", "w")  
 file.write_mesh(msh)
 file.write_function(uh, 0) 
-file.write_function(uh, 1) 
 
-end_time = time.time()
-print(f"Time elapsed {end_time - start_time}")
+# end_time = time.time()
+# print(f"Time elapsed {end_time - start_time}")

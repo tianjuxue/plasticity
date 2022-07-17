@@ -226,17 +226,16 @@ def simulation():
     res_u_lhs = ufl.inner(eps(v), sigma_tang(eps(u_)))*dxm
     res_u_rhs = -ufl.inner(new_sig, eps(u_))*dxm  
 
+    problem_T = fem.petsc.LinearProblem(ufl.lhs(res_T), ufl.rhs(res_T), bcs=bcs_T, petsc_options={"ksp_type": "bicg", "pc_type": "jacobi"})
 
-    problem_T = fem.petsc.LinearProblem(ufl.lhs(res_T), ufl.rhs(res_T), bcs=bcs_T, petsc_options={"ksp_type": "preonly", "pc_type": "lu"})
-
-    problem_u = fem.petsc.LinearProblem(res_u_lhs, res_u_rhs, bcs=bcs_u, petsc_options={"ksp_type": "preonly", "pc_type": "lu"})
+    problem_u = fem.petsc.LinearProblem(res_u_lhs, res_u_rhs, bcs=bcs_u, petsc_options={"ksp_type": "bicg", "pc_type": "jacobi"})
 
     def l2_projection(v, V):
         dv = ufl.TrialFunction(V)
         v_ = ufl.TestFunction(V)
         a_proj = ufl.inner(dv, v_)*dxm
         b_proj = ufl.inner(v, v_)*dxm
-        problem = fem.petsc.LinearProblem(a_proj, b_proj, petsc_options={"ksp_type": "preonly", "pc_type": "lu"})
+        problem = fem.petsc.LinearProblem(a_proj, b_proj, petsc_options={"ksp_type": "bicg", "pc_type": "jacobi"})
         u = problem.solve()
         return u
 

@@ -1,4 +1,4 @@
-# AM Simulation with FEniCSx
+# Additive Manufacturing Simulation with FEniCSx
 
 This is the code base for the coupled thermal-mechanical simulation in additive manufacturing (powder bed fusion), where we solve for temperature field and J2 plasticity with FEniCSx to study the residual stress behavior of the sample. This code is being developed under [AMPL](https://www.cao.mech.northwestern.edu/) at Northwestern University. 
 
